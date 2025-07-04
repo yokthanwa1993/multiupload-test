@@ -9,30 +9,56 @@ error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT);
 
 session_start();
 
-// --- Google/YouTube API Configuration ---
-$credentialsPath = __DIR__ . '/credentials/token.json';
-if (!file_exists($credentialsPath)) {
-    die("Error: Credentials JSON file 'token.json' not found.");
-}
-$credentials = json_decode(file_get_contents($credentialsPath), true);
-if (!isset($credentials['web']['client_id'])) {
-    die("Error: Invalid Google credentials JSON structure.");
-}
-define('GOOGLE_CLIENT_ID', $credentials['web']['client_id']);
-define('GOOGLE_CLIENT_SECRET', $credentials['web']['client_secret']);
-define('GOOGLE_REDIRECT_URI', $credentials['web']['redirect_uris'][0]);
+$scriptName = basename($_SERVER['SCRIPT_NAME']);
+// Allow these scripts to run even without a credentials file
+$allowed_without_token = ['setting.php', 'fix_permissions.php'];
 
+// --- Main Credentials Handling ---
+$credentialsPath = __DIR__ . '/credentials/token.json';
+$credentials = [];
+
+if (file_exists($credentialsPath)) {
+    $credentials = json_decode(file_get_contents($credentialsPath), true);
+    // Handle JSON decoding errors gracefully
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        if (!in_array($scriptName, $allowed_without_token)) {
+            die("Error: Corrupted 'token.json' file. Please fix it manually or re-create it via <a href='setting.php'>settings</a>.");
+        }
+        $credentials = []; // Reset to empty on error for settings page
+    }
+} elseif (!in_array($scriptName, $allowed_without_token)) {
+    // If credentials file is missing and we are not on an allowed page, redirect to the settings page.
+    $credentialsDir = __DIR__ . '/credentials';
+    if (!is_dir($credentialsDir)) {
+        // Attempt to create the directory if it doesn't exist
+        if (!mkdir($credentialsDir, 0755, true)) {
+            die("Error: The 'credentials' directory could not be created. Please check server permissions.");
+        }
+    }
+    // Redirect user to the setup page
+    header('Location: setting.php');
+    exit();
+}
+
+// --- Google/YouTube API Configuration ---
+if (!empty($credentials['web']['client_id'])) {
+    define('GOOGLE_CLIENT_ID', $credentials['web']['client_id']);
+    define('GOOGLE_CLIENT_SECRET', $credentials['web']['client_secret']);
+    define('GOOGLE_REDIRECT_URI', $credentials['web']['redirect_uris'][0]);
+}
+
+// --- Facebook API Configuration ---
+if (!empty($credentials['facebook']['page_id'])) {
+    define('FACEBOOK_PAGE_ID', $credentials['facebook']['page_id']);
+    define('FACEBOOK_PAGE_ACCESS_TOKEN', $credentials['facebook']['page_access_token']);
+}
+
+// --- API Endpoint Constants ---
 define('GOOGLE_AUTH_URL', 'https://accounts.google.com/o/oauth2/auth');
 define('GOOGLE_TOKEN_URL', 'https://oauth2.googleapis.com/token');
 define('YOUTUBE_UPLOAD_URL', 'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status');
 define('YOUTUBE_THUMBNAIL_UPLOAD_URL', 'https://www.googleapis.com/upload/youtube/v3/thumbnails/set');
-
-// --- Facebook API Configuration ---
-// Use hardcoded values for now (you can move these to credentials later)
-define('FACEBOOK_PAGE_ID', '675135025677492');
-define('FACEBOOK_PAGE_ACCESS_TOKEN', 'EAAChZCKmUTDcBO4Vv1pFtfMQCehJiA73VA7u1i8le8PvnghlH1A9ejbsU6rL7FCZCcyZA9DusZADmHLdvCZAEeddtFUgK1EuiqvOZCnE4C6WaUQDUw35AzahShrcXGsgebUoZBa6U2gHRDqHZCVCadHM0xjZCztnbiTO2RYlHKHETNzuzgKBulLPt5LouwwTeVe9FKZCSBkEwxjFBMXmqXn7ZCR');
 define('FACEBOOK_GRAPH_API_URL', 'https://graph.facebook.com/v19.0/');
-
 
 // --- Token Management Functions ---
 define('USER_TOKEN_PATH', __DIR__ . '/credentials/user_token.json');
