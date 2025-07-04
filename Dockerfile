@@ -1,4 +1,5 @@
 # Use an official PHP image with Apache, which is well-suited for this project.
+# Using PHP 8.1 as a stable base.
 # Force rebuild: 2025-07-04-04:26:00
 FROM php:8.1-apache
 
@@ -9,28 +10,40 @@ RUN apt-get update && apt-get install -y \
     libjpeg-dev \
     libfreetype6-dev \
     libcurl4-openssl-dev \
+    zip \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure and install required PHP extensions for the project.
-# mbstring is used for handling multi-byte strings (e.g., in YouTube titles).
-# fileinfo is used by mime_content_type to detect file types.
-# gd is needed for image manipulation, which might be useful for thumbnails.
+# mbstring: For multi-byte strings (e.g., YouTube titles).
+# fileinfo: For mime_content_type to detect file types.
+# gd: For image manipulation (thumbnails).
+# curl: For making API requests.
+# zip: For potential future archive handling.
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install mbstring fileinfo gd curl
+    && docker-php-ext-install mbstring fileinfo gd curl pdo pdo_mysql zip
+
+# Set the working directory to /app, standard for Coolify
+WORKDIR /app
 
 # Copy custom PHP configuration to increase upload limits
 COPY uploads.ini /usr/local/etc/php/conf.d/uploads.ini
 
-# Copy all application files from the current directory to the web server's root directory in the container.
-COPY . /var/www/html/
+# Copy all application files from the current directory to the /app directory in the container.
+COPY . .
 
-# Create directories and grant the web server user (www-data) write permissions to the 'uploads' and 'credentials' directories.
+# Create directories for uploads and credentials within the workdir.
+# Grant the web server user (www-data) write permissions to these directories.
 # This is crucial so that the application can save uploaded files and access tokens.
-# Updated: 2025-07-04 to fix permission issues in CapRover deployment
-RUN mkdir -p /var/www/html/uploads && \
-    mkdir -p /var/www/html/credentials && \
-    chown -R www-data:www-data /var/www/html && \
-    chmod -R 777 /var/www/html/uploads && \
-    chmod -R 777 /var/www/html/credentials
+RUN mkdir -p uploads credentials && \
+    chown -R www-data:www-data uploads credentials && \
+    chmod -R 775 uploads credentials
 
-# The apache server in the base image is already configured to expose port 80, which CapRover will use. 
+# Apache in the base image is already configured to point to /var/www/html.
+# We need to change Apache's document root to our new working directory /app.
+RUN sed -i 's!/var/www/html!/app!g' /etc/apache2/sites-available/000-default.conf
+
+# Enable Apache's rewrite module for potential .htaccess usage
+RUN a2enmod rewrite
+
+# The apache server in the base image is already configured to expose port 80. 
