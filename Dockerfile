@@ -51,4 +51,7 @@ RUN sed -i 's!/var/www/html!/app!g' /etc/apache2/sites-available/000-default.con
 # Enable Apache's rewrite module for potential .htaccess usage
 RUN a2enmod rewrite
 
+# Add required directory permissions to Apache config to allow access to the /app directory.
+RUN echo '\n<Directory /app>\n    Options Indexes FollowSymLinks\n    AllowOverride All\n    Require all granted\n</Directory>\n' >> /etc/apache2/apache2.conf
+
 # The apache server in the base image is already configured to expose port 80. 
