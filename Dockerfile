@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
     libcurl4-openssl-dev \
     zip \
     unzip \
+    libzip-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure and install required PHP extensions for the project.
