@@ -39,6 +39,10 @@ RUN mkdir -p uploads credentials && \
     chown -R www-data:www-data uploads credentials && \
     chmod -R 775 uploads credentials
 
+# Add a command to list directory permissions for debugging during deployment.
+# This will show up in the Coolify build logs.
+RUN ls -la /app
+
 # Apache in the base image is already configured to point to /var/www/html.
 # We need to change Apache's document root to our new working directory /app.
 RUN sed -i 's!/var/www/html!/app!g' /etc/apache2/sites-available/000-default.conf

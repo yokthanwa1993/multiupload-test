@@ -30,10 +30,9 @@ if (file_exists($credentialsPath)) {
     // If credentials file is missing and we are not on an allowed page, redirect to the settings page.
     $credentialsDir = __DIR__ . '/credentials';
     if (!is_dir($credentialsDir)) {
-        // Attempt to create the directory if it doesn't exist
-        if (!mkdir($credentialsDir, 0755, true)) {
-            die("Error: The 'credentials' directory could not be created. Please check server permissions.");
-        }
+        // In a proper Docker setup, this directory should already exist.
+        // If it doesn't, it's a deployment configuration issue, not a runtime issue.
+        die("Error: The 'credentials' directory does not exist. Please check your deployment configuration (Dockerfile or Volume settings in Coolify).");
     }
     // Redirect user to the setup page
     header('Location: setting.php');
